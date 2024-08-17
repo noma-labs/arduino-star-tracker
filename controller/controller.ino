@@ -8,13 +8,10 @@ int analogPinRy = 34;
 int analogPinRx = 35; 
 
 
-
-// Structure example to send data
-// Must match the receiver structure
 typedef struct struct_message {
-  int rx;
-  int ry;
-  bool d;
+  int rx; //  X-axis analog output voltage
+  int ry; //  Y-axis analog output voltage
+  bool sw; // digital   switch 
 } struct_message;
 
 // Create a struct_message called myData
@@ -61,20 +58,17 @@ void setup() {
   pinMode(analogPinRx, INPUT); 
 }
  
- int valRy = 0;
- int valRx = 0;
 
 void loop() {
-  valRy =  analogRead(analogPinRy);
-  Serial.println(valRy);
-  valRx =  analogRead(analogPinRx);
-  Serial.println(valRx);
-
   // set value to send
   myData.rx = analogRead(analogPinRx);
   myData.ry = analogRead(analogPinRy);
-  myData.d = false;
+  myData.sw = false;
 
+  Serial.print("x:");
+  Serial.println(myData.rx );
+  Serial.print("y:");
+  Serial.print(myData.ry );
   
   // Send message via ESP-NOW
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
