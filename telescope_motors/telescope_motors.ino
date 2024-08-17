@@ -38,14 +38,13 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   Serial.print("Ry: ");
   Serial.println(myData.ry);
 
-  if (myData.ry > 2000) {
-    Serial.println("forward");
-    StepForwardDefault();
+
+  int v = map(myData.ry, 0, 4095, -400, 400);
+
+  if (v > -75 && v < 75) {
+    v = 0;
   }
-  if (myData.ry < 1500) {
-    Serial.println("backward");
-    ReverseStepDefault();
-  }
+  stepper1.setSpeed(v);
 }
 
 void setup() {
@@ -65,7 +64,7 @@ void setup() {
   // resetBEDPins();
 
   stepper1.setMaxSpeed(10000);
-  stepper1.setSpeed(400);
+  stepper1.setSpeed(0);
 
 
   // WiFi.mode(WIFI_MODE_STA);
@@ -84,7 +83,9 @@ void setup() {
   esp_now_register_recv_cb(OnDataRecv);
 }
 
-void loop() {}
+void loop() {
+  stepper1.runSpeed();
+}
 
 //Reset Big Easy Driver pins to default states
 void resetBEDPins() {
@@ -94,24 +95,4 @@ void resetBEDPins() {
   digitalWrite(MS2, LOW);
   digitalWrite(MS3, LOW);
   digitalWrite(EN, HIGH);
-}
-
-
-
-//Default microstep mode function
-void StepForwardDefault() { 
-   digitalWrite(EN, LOW);//attivo il driver
-
-  stepper1.setSpeed(400);
-  stepper1.runSpeed();
-
-}
-
-
-//Reverse default microstep mode function
-void ReverseStepDefault() {
-    digitalWrite(EN, LOW);//attivo il driver
-  stepper1.setSpeed(-400);
-  stepper1.runSpeed();
-
 }
