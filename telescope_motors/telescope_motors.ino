@@ -143,7 +143,8 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   }
 
 
-  //  SET mode: is enable id the manual mode is disable and inseguimento is enabled ?
+  //  SET mode: change the hout. minutes. seconds.   
+  //        - is enable id the manual mode is disable and inseguimento is enabled ?
   //        - manully set hour, minute, and seconds
   // TODO: read are in the opposit logic ??
   // if (digitalRead(SET) == 0 && digitalRead(INSG) == 1) {  //schiaccio pulsante A1 per settare coordinate. Il pulsante D12 non deve essere schiacciato
