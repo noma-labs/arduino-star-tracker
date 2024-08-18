@@ -4,13 +4,15 @@
 // REPLACE WITH YOUR RECEIVER MAC Address
 uint8_t broadcastAddress[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
-#define ryPin 34
+#define ryPin 34 // NOTE: other analog pin were not working (like 15 and 2)
 #define rxPin 35
 
-#define upPin 14    
-#define dnPin 16    
-#define leftPin 5   
-#define rightPin 5  
+#define upPin 25     
+#define dnPin 33 // do not work      
+#define switchPin 27      
+#define leftPin 32    
+#define rightPin 26   
+
 
 typedef struct struct_message {
   int rx;  //  X-axis analog output voltage
@@ -31,8 +33,9 @@ esp_now_peer_info_t peerInfo;
 
 // callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  Serial.print("\r\nLast Packet Send Status:\t");
-  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+  if (status != ESP_NOW_SEND_SUCCESS){
+    Serial.println("Delivery fail");
+  }
 }
 
 void setup() {
@@ -61,17 +64,19 @@ void setup() {
   pinMode(ryPin, INPUT);
   pinMode(rxPin, INPUT);
 
-  pinMode(upPin, INPUT);
-  pinMode(dnPin, INPUT);
-  pinMode(leftPin, INPUT);
-  pinMode(rightPin, INPUT);
+  pinMode(upPin, INPUT_PULLUP);
+  pinMode(dnPin, INPUT_PULLUP);
+  pinMode(leftPin, INPUT_PULLUP);
+  pinMode(rightPin, INPUT_PULLUP);
+  pinMode(switchPin, INPUT_PULLUP);
+
 }
 
 
 void loop() {
   myData.rx = analogRead(rxPin);
   myData.ry = analogRead(ryPin);
-  myData.sw = false;
+  myData.sw = digitalRead(switchPin);
   myData.dn = digitalRead(dnPin);
   myData.up = digitalRead(upPin);
   myData.left = digitalRead(leftPin);
@@ -80,23 +85,24 @@ void loop() {
   Serial.print("x:");
   Serial.println(myData.rx);
   Serial.print("y:");
-  Serial.print(myData.ry);
+  Serial.println(analogRead(ryPin));
   Serial.print("dn:");
-  Serial.print(myData.dn);
+  Serial.println(myData.dn);
   Serial.print("up:");
-  Serial.print(myData.up);
+  Serial.println(myData.up);
   Serial.print("left:");
-  Serial.print(myData.left);
+  Serial.println(myData.left);
   Serial.print("right:");
-  Serial.print(myData.right);
+  Serial.println(myData.right);
+   Serial.print("switch:");
+  Serial.println(digitalRead(switchPin));
+  Serial.println();
 
 
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
+  // esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
 
-  if (result == ESP_OK) {
-    Serial.println("Sent with success");
-  } else {
-    Serial.println("Error sending the data");
-  }
-  delay(100);
+  // if (result != ESP_OK) {
+  //   Serial.println("Error sending the data");
+  // }
+  delay(1000);
 }
