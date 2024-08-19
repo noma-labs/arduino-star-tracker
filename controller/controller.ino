@@ -74,8 +74,8 @@ void setup() {
 
 
 void loop() {
-  myData.rx = analogRead(rxPin);
-  myData.ry = analogRead(ryPin);
+  myData.rx = analogRead(rxPin) / 4; // from 4095 to 1024
+  myData.ry = analogRead(ryPin) / 4;
   myData.sw = digitalRead(switchPin);
   myData.dn = digitalRead(dnPin);
   myData.up = digitalRead(upPin);
@@ -85,7 +85,7 @@ void loop() {
   Serial.print("x:");
   Serial.println(myData.rx);
   Serial.print("y:");
-  Serial.println(analogRead(ryPin));
+  Serial.println(myData.ry);
   Serial.print("dn:");
   Serial.println(myData.dn);
   Serial.print("up:");
@@ -99,10 +99,10 @@ void loop() {
   Serial.println();
 
 
-  // esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
 
-  // if (result != ESP_OK) {
-  //   Serial.println("Error sending the data");
-  // }
-  delay(1000);
+  if (result != ESP_OK) {
+    Serial.println("Error sending the data");
+  }
+  // delay(100);
 }
