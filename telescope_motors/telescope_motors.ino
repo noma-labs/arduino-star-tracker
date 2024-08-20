@@ -20,7 +20,7 @@
 int ZeroP1 = 520;  // posizione zero del potenziometro1
 int ZeroP2 = 400;  // posizione zero del potenziometro2
 
-// register the state: 0 = manual, 1 = inseguimento, 2 = set (not yet implemented)
+// store the state: 0 = manual, 1 = inseguimento, 2 = set (not yet implemented)
 int state = 0;
 
 AccelStepper stepper1(AccelStepper::DRIVER, stp2, dir2);
@@ -52,28 +52,16 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   int potenziometro1 = myData.ry;
   int potenziometro2 = myData.rx;  // ascensione retta
 
-  //   int manualSw = myData.right; // remove
+  //   int manualSw = myData.right; 
   bool clearSw = myData.up;
   bool insegSw = myData.dn;
   bool microStepSw = myData.left;
 
-  // if the switch is pressed, enable microstep + speed = 19, and move to inseguimento state
-  if (insegSw == false) {
-    digitalWrite(EN, LOW);
 
-    digitalWrite(MS1, HIGH);  //Pull MS1, MS2, and MS3 high to set logic to 1/16th microstep resolution
-    digitalWrite(MS2, HIGH);
-    digitalWrite(MS3, HIGH);
-
-    stepper1.setSpeed(19);  //(4255*16/3600)
-
-    state = 1;
-  }
-
-  // in any state, if the switch is pressed, disable all the modes and go to the manual state
+  // in any state, if the switch is pressed, disable all the modes and move to the manual state
   if (clearSw == false) {
 #ifdef DEBUG
-    Serial.println("CLEAR enabled");
+    Serial.println("CLEAR");
 #endif
     stepper1.setSpeed(0);
     stepper2.setSpeed(0);
@@ -104,6 +92,20 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       } else {
         stepper2.setSpeed(0);
       }
+
+      if (insegSw == false) {
+        digitalWrite(EN, LOW);
+
+        digitalWrite(MS1, HIGH);  // Pull MS1, MS2, and MS3 high to set logic to 1/16th microstep resolution
+        digitalWrite(MS2, HIGH);
+        digitalWrite(MS3, HIGH);
+
+        stepper1.setSpeed(19);  // (4255*16/3600)
+
+        state = 1;
+      }
+
+
       // microStep can be enabled only in the MANUAL state. Inseguimento has the microstep enabled by default
       if (microStepSw == false) {
 #ifdef DEBUG
@@ -119,12 +121,26 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
 #ifdef DEBUG
       Serial.println("INSEGUIMENTO state");
 #endif
+      // moving the joystick has the same effect of the CLEAR button. Stop microstep and move to manual state.
       if (potenziometro1 < 400 || potenziometro1 > 800) {
         stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
+        
+        // disable microstep
+        digitalWrite(MS1, LOW);
+        digitalWrite(MS2, LOW);
+        digitalWrite(MS3, LOW);
+
         state = 0;  // move to the manual state
+
       }
       if (potenziometro2 < 400 || potenziometro2 > 800) {
         stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
+
+        // disable microstep
+        digitalWrite(MS1, LOW);
+        digitalWrite(MS2, LOW);
+        digitalWrite(MS3, LOW);
+
         state = 0;  // move to the manual state
       }
       break;
