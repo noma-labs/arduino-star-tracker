@@ -20,7 +20,7 @@
 int ZeroP1 = 450;  // posizione zero del potenziometro1
 int ZeroP2 = 450;  // posizione zero del potenziometro2
 
-// store the state: 0 = manual, 1 = inseguimento, 2 = set (not yet implemented)
+// store the state: 0 = MANUAL, 1 = INSEGUIMENTO, 2 INSEGUIMENTO_MANUALE, 3 = set (not yet implemented)
 int state = 0;
 
 AccelStepper stepper1(AccelStepper::DRIVER, stp2, dir2);
@@ -41,6 +41,27 @@ typedef struct struct_message {
 
 struct_message myData;
 
+
+void startInseguimentoWithMicroStep() {
+  digitalWrite(EN, LOW);
+
+  enableMicroStep();
+
+  stepper1.setSpeed(19);  // (4255*16/3600)
+}
+
+void enableMicroStep() {
+  digitalWrite(MS1, HIGH);  // Pull MS1, MS2, and MS3 high to set logic to 1/16th microstep resolution
+  digitalWrite(MS2, HIGH);
+  digitalWrite(MS3, HIGH);
+}
+
+
+void disableMicroStep() {
+  digitalWrite(MS1, LOW);
+  digitalWrite(MS2, LOW);
+  digitalWrite(MS3, LOW);
+}
 
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   memcpy(&myData, incomingData, sizeof(myData));
@@ -66,16 +87,13 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
     stepper1.setSpeed(0);
     stepper2.setSpeed(0);
 
-    // disable microstep
-    digitalWrite(MS1, LOW);
-    digitalWrite(MS2, LOW);
-    digitalWrite(MS3, LOW);
+    disableMicroStep();
 
     state = 0;
   }
 
   switch (state) {
-    case 0:  // manual state
+    case 0:  // MANUAL state
 #ifdef DEBUG
       Serial.println("MANUAL state");
 #endif
@@ -93,51 +111,59 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
         stepper2.setSpeed(0);
       }
 
-      // move to INSEGUIMENTO (enable microstep + setSpedd = 19)
+      // move to INSEGUIMENTO (enable microstep + setSpeed = 19)
       if (insegSw == false) {
-        digitalWrite(EN, LOW);
-
-        digitalWrite(MS1, HIGH);  // Pull MS1, MS2, and MS3 high to set logic to 1/16th microstep resolution
-        digitalWrite(MS2, HIGH);
-        digitalWrite(MS3, HIGH);
-
-        stepper1.setSpeed(19);  // (4255*16/3600)
-
+        startInseguimentoWithMicroStep();
         state = 1;
       }
 
 
-      // enable MCROSTEP
       if (microStepSw == false) {
 #ifdef DEBUG
         Serial.println("MICROSTEP enabled");
 #endif
 
-        digitalWrite(MS1, HIGH);  //Pull MS1,MS2, and MS3 high to set logic to 1/16th microstep resolution
-        digitalWrite(MS2, HIGH);
-        digitalWrite(MS3, HIGH);
+        enableMicroStep();
       }
       break;
-    case 1:  // inseguimento state
+    case 1:  // INSEGUIMENTO state
 #ifdef DEBUG
       Serial.println("INSEGUIMENTO state");
 #endif
-      // moving the joystick has the same effect of the CLEAR button. Stop microstep and move to manual state.
-      if (potenziometro1 < 400 || potenziometro1 > 800) {
-        stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
 
-        // disable microstep
-        digitalWrite(MS1, LOW);
-        digitalWrite(MS2, LOW);
-        digitalWrite(MS3, LOW);
-
-        state = 0;  // move to the manual state
-
+      if (microStepSw == false) {
+#ifdef DEBUG
+        Serial.println("MICROSTEP enabled");
+#endif
+        enableMicroStep();
       }
-      if (potenziometro2 < 400 || potenziometro2 > 800) {
+      
+      // moving the joystick enter into the INSEGUIMENTO_MANUALE state
+      if (potenziometro1 < 400 || potenziometro1 > 600) {
+        stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
+        state = 2;
+      }
+      if (potenziometro2 < 400 || potenziometro2 > 600) {
         stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
-
-        state = 0;  // move to the manual state
+        state = 2;
+      }
+      break;
+    case 2:  // INSEGUIMENTO_MANUALE state
+#ifdef DEBUG
+      Serial.println("INSEGUIMENTO_MANUALE state");
+#endif
+      // INSEGUIMENTO_MANUALE: move the motors with the speed equal to the joystick with microstep.
+      // If the joystick is not moved, come back to inseguimento (microstep + speed=19)
+      if ((potenziometro1 >= 400 && potenziometro1 <= 600) && (potenziometro2 >= 400 && potenziometro2 <= 600)) {
+        startInseguimentoWithMicroStep();
+        state = 1;
+      } else {
+        if (potenziometro1 < 400 || potenziometro1 > 600) {
+          stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
+        }
+        if (potenziometro2 < 400 || potenziometro2 > 600) {
+          stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
+        }
       }
       break;
     default:
