@@ -7,11 +7,12 @@ uint8_t broadcastAddress[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 #define ryPin 34 // NOTE: other analog pin were not working (like 15 and 2)
 #define rxPin 35
 
-#define upPin 25     
-#define dnPin 33 // do not work      
-#define switchPin 27      
-#define leftPin 32    
-#define rightPin 26   
+#define upPin 25
+#define dnPin 26
+#define switchPin 32
+#define leftPin 27
+#define rightPin 33
+#define jolly 14 // not yet implemented
 
 
 typedef struct struct_message {
@@ -20,10 +21,10 @@ typedef struct struct_message {
   bool sw;
 
   // 4 buttons on the controller
-  bool up;     
-  bool dn;     
-  bool right;  
-  bool left;   
+  bool up;
+  bool dn;
+  bool right;
+  bool left;
 } struct_message;
 
 // Create a struct_message called myData

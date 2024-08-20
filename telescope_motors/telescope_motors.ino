@@ -9,16 +9,16 @@
 #define dir1 12
 #define stp1 14
 
-#define dir2 9
-#define stp2 10
+#define dir2 0
+#define stp2 2
 
 #define MS1 27
 #define MS2 26
 #define MS3 25
 #define EN 33
 
-int ZeroP1 = 520;  // posizione zero del potenziometro1
-int ZeroP2 = 400;  // posizione zero del potenziometro2
+int ZeroP1 = 450;  // posizione zero del potenziometro1
+int ZeroP2 = 450;  // posizione zero del potenziometro2
 
 // store the state: 0 = manual, 1 = inseguimento, 2 = set (not yet implemented)
 int state = 0;
@@ -52,7 +52,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   int potenziometro1 = myData.ry;
   int potenziometro2 = myData.rx;  // ascensione retta
 
-  //   int manualSw = myData.right; 
+  //   int manualSw = myData.right;
   bool clearSw = myData.up;
   bool insegSw = myData.dn;
   bool microStepSw = myData.left;
@@ -80,19 +80,20 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       Serial.println("MANUAL state");
 #endif
       // move joystick to move the motors
-      if (potenziometro1 < 400 || potenziometro1 > 800) {
+      if (potenziometro1 < 400 || potenziometro1 > 600) {
         digitalWrite(EN, LOW);
         stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
       } else {
         digitalWrite(EN, HIGH);  // disattivo il driver
         stepper1.setSpeed(0);    // optional ??
       }
-      if (potenziometro2 < 400 || potenziometro2 > 800) {
+      if (potenziometro2 < 400 || potenziometro2 > 600) {
         stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
       } else {
         stepper2.setSpeed(0);
       }
 
+      // move to INSEGUIMENTO (enable microstep + setSpedd = 19)
       if (insegSw == false) {
         digitalWrite(EN, LOW);
 
@@ -106,7 +107,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       }
 
 
-      // microStep can be enabled only in the MANUAL state. Inseguimento has the microstep enabled by default
+      // enable MCROSTEP
       if (microStepSw == false) {
 #ifdef DEBUG
         Serial.println("MICROSTEP enabled");
@@ -124,7 +125,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       // moving the joystick has the same effect of the CLEAR button. Stop microstep and move to manual state.
       if (potenziometro1 < 400 || potenziometro1 > 800) {
         stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
-        
+
         // disable microstep
         digitalWrite(MS1, LOW);
         digitalWrite(MS2, LOW);
@@ -135,11 +136,6 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       }
       if (potenziometro2 < 400 || potenziometro2 > 800) {
         stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
-
-        // disable microstep
-        digitalWrite(MS1, LOW);
-        digitalWrite(MS2, LOW);
-        digitalWrite(MS3, LOW);
 
         state = 0;  // move to the manual state
       }
