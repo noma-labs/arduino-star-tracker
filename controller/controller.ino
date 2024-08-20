@@ -4,7 +4,7 @@
 // REPLACE WITH YOUR RECEIVER MAC Address
 uint8_t broadcastAddress[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
-#define ryPin 34 // NOTE: other analog pin were not working (like 15 and 2)
+#define ryPin 34  // NOTE: other analog pin were not working (like 15 and 2)
 #define rxPin 35
 
 #define upPin 25
@@ -12,7 +12,7 @@ uint8_t broadcastAddress[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 #define switchPin 32
 #define leftPin 27
 #define rightPin 33
-#define jolly 14 // not yet implemented
+#define jolly 14  // not yet implemented
 
 
 typedef struct struct_message {
@@ -25,6 +25,8 @@ typedef struct struct_message {
   bool dn;
   bool right;
   bool left;
+
+  // bool jolly;
 } struct_message;
 
 // Create a struct_message called myData
@@ -34,7 +36,7 @@ esp_now_peer_info_t peerInfo;
 
 // callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-  if (status != ESP_NOW_SEND_SUCCESS){
+  if (status != ESP_NOW_SEND_SUCCESS) {
     Serial.println("Delivery fail");
   }
 }
@@ -70,13 +72,12 @@ void setup() {
   pinMode(leftPin, INPUT_PULLUP);
   pinMode(rightPin, INPUT_PULLUP);
   pinMode(switchPin, INPUT_PULLUP);
-
 }
 
 
 void loop() {
-  myData.rx = analogRead(rxPin) / 4; // from 4095 to 1024
-  myData.ry = analogRead(ryPin) / 4;
+  myData.rx = map(analogRead(rxPin), 0, 4095, 0,  1024); 
+  myData.ry = map(analogRead(ryPin), 0, 4095, 0, 1024);
   myData.sw = digitalRead(switchPin);
   myData.dn = digitalRead(dnPin);
   myData.up = digitalRead(upPin);
@@ -95,8 +96,8 @@ void loop() {
   Serial.println(myData.left);
   Serial.print("right:");
   Serial.println(myData.right);
-   Serial.print("switch:");
-  Serial.println(digitalRead(switchPin));
+  Serial.print("switch:");
+  Serial.println(myData.sw);
   Serial.println();
 
 
