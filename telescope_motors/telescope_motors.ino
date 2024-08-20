@@ -17,11 +17,16 @@
 #define MS3 25
 #define EN 33
 
+#define LASER_PIN 5
+
 int ZeroP1 = 450;  // posizione zero del potenziometro1
 int ZeroP2 = 450;  // posizione zero del potenziometro2
 
 // store the state: 0 = MANUAL, 1 = INSEGUIMENTO, 2 INSEGUIMENTO_MANUALE, 3 = set (not yet implemented)
 int state = 0;
+
+bool lastLaserSwitchState = true;
+byte ledState = LOW;
 
 AccelStepper stepper1(AccelStepper::DRIVER, stp2, dir2);
 AccelStepper stepper2(AccelStepper::DRIVER, stp1, dir1);
@@ -30,7 +35,7 @@ typedef struct struct_message {
   // joystick signlas
   int rx;
   int ry;
-  bool d;
+  bool sw;
 
   // 4 buttons
   bool up;
@@ -63,6 +68,7 @@ void disableMicroStep() {
   digitalWrite(MS3, LOW);
 }
 
+
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   memcpy(&myData, incomingData, sizeof(myData));
   Serial.print("Rx: ");
@@ -73,7 +79,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   int potenziometro1 = myData.ry;
   int potenziometro2 = myData.rx;  // ascensione retta
 
-  //   int manualSw = myData.right;
+  bool laserSw = myData.sw;
   bool clearSw = myData.up;
   bool insegSw = myData.dn;
   bool microStepSw = myData.left;
@@ -89,7 +95,19 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
 
     disableMicroStep();
 
+    digitalWrite(LASER_PIN, LOW);
+
     state = 0;
+  }
+
+
+  // always control the laser switch to enable/disable
+  if (laserSw != lastLaserSwitchState) {
+    lastLaserSwitchState = laserSw;
+    if (laserSw == false) { // button has been pressed
+      ledState = (ledState == HIGH) ? LOW: HIGH;
+      digitalWrite(LASER_PIN, ledState);
+    }
   }
 
   switch (state) {
@@ -137,7 +155,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
 #endif
         enableMicroStep();
       }
-      
+
       // moving the joystick enter into the INSEGUIMENTO_MANUALE state
       if (potenziometro1 < 400 || potenziometro1 > 600) {
         stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
@@ -187,11 +205,14 @@ void setup() {
   pinMode(MS2, OUTPUT);
   pinMode(MS3, OUTPUT);
   pinMode(EN, OUTPUT);
+  pinMode(LASER_PIN, OUTPUT);
 
   stepper1.setMaxSpeed(10000);
   stepper1.setSpeed(0);
   stepper2.setMaxSpeed(10000);
   stepper2.setSpeed(0);
+
+  digitalWrite(LASER_PIN, ledState);
 
 
   if (esp_now_init() != ESP_OK) {
