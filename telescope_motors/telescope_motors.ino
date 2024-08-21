@@ -6,16 +6,17 @@
 #define DEBUG
 
 // Motors definition
-#define dir1 12
-#define stp1 14
+#define dir1 33
+#define stp1 32
 
-#define dir2 0
-#define stp2 2
+#define dir2 2
+#define stp2 0
 
 #define MS1 27
 #define MS2 26
 #define MS3 25
-#define EN 33
+#define EN 12
+
 
 #define LASER_PIN 5
 
@@ -101,7 +102,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   }
 
 
-  // always control the laser switch to enable/disable
+  // always control the laser switch
   if (laserSw != lastLaserSwitchState) {
     lastLaserSwitchState = laserSw;
     if (laserSw == false) { // button has been pressed
