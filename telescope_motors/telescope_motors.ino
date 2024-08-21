@@ -175,6 +175,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
       // If the joystick is not moved, come back to inseguimento (microstep + speed=19)
       if ((potenziometro1 >= 400 && potenziometro1 <= 600) && (potenziometro2 >= 400 && potenziometro2 <= 600)) {
         startInseguimentoWithMicroStep();
+        stepper2.setSpeed(0); // only the first motor must follow the star :(
         state = 1;
       } else {
         if (potenziometro1 < 400 || potenziometro1 > 600) {
