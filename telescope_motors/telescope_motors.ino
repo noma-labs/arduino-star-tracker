@@ -17,8 +17,7 @@
 #define MS3 25
 #define EN 12
 
-
-#define LASER_PIN 5
+#define LASER_PIN 13
 
 int ZeroP1 = 450;  // posizione zero del potenziometro1
 int ZeroP2 = 450;  // posizione zero del potenziometro2
