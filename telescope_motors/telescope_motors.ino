@@ -26,7 +26,7 @@ int ZeroP2 = 450;  // posizione zero del potenziometro2
 int state = 0;
 
 bool lastLaserSwitchState = true;
-byte ledState = LOW;
+byte ledState = HIGH;
 
 AccelStepper stepper1(AccelStepper::DRIVER, stp2, dir2);
 AccelStepper stepper2(AccelStepper::DRIVER, stp1, dir1);
