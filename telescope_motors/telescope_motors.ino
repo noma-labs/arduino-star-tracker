@@ -2,35 +2,73 @@
 #include <WiFi.h>
 #include <AccelStepper.h>
 
-// first motot
-// #define dir 12
-// #define stp 14
-// secondo motor
-#define dir 9
-#define stp 10
+// when this is defined the board will print debug messages on serial
+#define DEBUG
+
+// Motors definition
+#define dir1 33
+#define stp1 32
+
+#define dir2 2
+#define stp2 0
 
 #define MS1 27
 #define MS2 26
 #define MS3 25
-#define EN 33
+#define EN 12
 
-AccelStepper stepper1(AccelStepper::DRIVER, stp, dir);
-// AccelStepper stepper2(1, 4, 3);
+#define LASER_PIN 13
 
+int ZeroP1 = 450;  // posizione zero del potenziometro1
+int ZeroP2 = 450;  // posizione zero del potenziometro2
 
+// store the state: 0 = MANUAL, 1 = INSEGUIMENTO, 2 INSEGUIMENTO_MANUALE, 3 = set (not yet implemented)
+int state = 0;
 
-// Structure example to receive data
-// Must match the sender structure
+bool lastLaserSwitchState = true;
+byte ledState = HIGH;
+
+AccelStepper stepper1(AccelStepper::DRIVER, stp2, dir2);
+AccelStepper stepper2(AccelStepper::DRIVER, stp1, dir1);
+
 typedef struct struct_message {
+  // joystick signlas
   int rx;
   int ry;
-  bool d;
+  bool sw;
+
+  // 4 buttons
+  bool up;
+  bool dn;
+  bool right;
+  bool left;
 } struct_message;
 
-// Create a struct_message called myData
 struct_message myData;
 
-// callback function that will be executed when data is received
+
+void startInseguimentoWithMicroStep() {
+  digitalWrite(EN, LOW);
+
+  enableMicroStep();
+
+  stepper1.setSpeed(19);  // (4255*16/3600)
+}
+
+void enableMicroStep() {
+  digitalWrite(MS1, HIGH);  // Pull MS1, MS2, and MS3 high to set logic to 1/16th microstep resolution
+  digitalWrite(MS2, HIGH);
+  digitalWrite(MS3, HIGH);
+}
+
+
+void disableMicroStep() {
+  digitalWrite(MS1, LOW);
+  digitalWrite(MS2, LOW);
+  digitalWrite(MS3, LOW);
+}
+
+
 void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   memcpy(&myData, incomingData, sizeof(myData));
   Serial.print("Rx: ");
@@ -38,61 +76,155 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
   Serial.print("Ry: ");
   Serial.println(myData.ry);
 
+  int potenziometro1 = myData.ry;
+  int potenziometro2 = myData.rx;  // ascensione retta
 
-  int v = map(myData.ry, 0, 4095, -400, 400);
+  bool laserSw = myData.sw;
+  bool clearSw = myData.up;
+  bool insegSw = myData.dn;
+  bool microStepSw = myData.left;
 
-  if (v > -75 && v < 75) {
-    v = 0;
+
+  // in any state, if the switch is pressed, disable all the modes and move to the manual state
+  if (clearSw == false) {
+#ifdef DEBUG
+    Serial.println("CLEAR");
+#endif
+    stepper1.setSpeed(0);
+    stepper2.setSpeed(0);
+
+    disableMicroStep();
+
+    digitalWrite(LASER_PIN, LOW);
+
+    state = 0;
   }
-  stepper1.setSpeed(v);
+
+
+  // always control the laser switch
+  if (laserSw != lastLaserSwitchState) {
+    lastLaserSwitchState = laserSw;
+    if (laserSw == false) { // button has been pressed
+      ledState = (ledState == HIGH) ? LOW: HIGH;
+      digitalWrite(LASER_PIN, ledState);
+    }
+  }
+
+  switch (state) {
+    case 0:  // MANUAL state
+#ifdef DEBUG
+      Serial.println("MANUAL state");
+#endif
+      // move joystick to move the motors
+      if (potenziometro1 < 400 || potenziometro1 > 600) {
+        digitalWrite(EN, LOW);
+        stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
+      } else {
+        digitalWrite(EN, HIGH);  // disattivo il driver
+        stepper1.setSpeed(0);    // optional ??
+      }
+      if (potenziometro2 < 400 || potenziometro2 > 600) {
+        stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
+      } else {
+        stepper2.setSpeed(0);
+      }
+
+      // move to INSEGUIMENTO (enable microstep + setSpeed = 19)
+      if (insegSw == false) {
+        startInseguimentoWithMicroStep();
+        state = 1;
+      }
+
+
+      if (microStepSw == false) {
+#ifdef DEBUG
+        Serial.println("MICROSTEP enabled");
+#endif
+
+        enableMicroStep();
+      }
+      break;
+    case 1:  // INSEGUIMENTO state
+#ifdef DEBUG
+      Serial.println("INSEGUIMENTO state");
+#endif
+
+      if (microStepSw == false) {
+#ifdef DEBUG
+        Serial.println("MICROSTEP enabled");
+#endif
+        enableMicroStep();
+      }
+
+      // moving the joystick enter into the INSEGUIMENTO_MANUALE state
+      if (potenziometro1 < 400 || potenziometro1 > 600) {
+        stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
+        state = 2;
+      }
+      if (potenziometro2 < 400 || potenziometro2 > 600) {
+        stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
+        state = 2;
+      }
+      break;
+    case 2:  // INSEGUIMENTO_MANUALE state
+#ifdef DEBUG
+      Serial.println("INSEGUIMENTO_MANUALE state");
+#endif
+      // INSEGUIMENTO_MANUALE: move the motors with the speed equal to the joystick with microstep.
+      // If the joystick is not moved, come back to inseguimento (microstep + speed=19)
+      if ((potenziometro1 >= 400 && potenziometro1 <= 600) && (potenziometro2 >= 400 && potenziometro2 <= 600)) {
+        startInseguimentoWithMicroStep();
+        stepper2.setSpeed(0); // only the first motor must follow the star :(
+        state = 1;
+      } else {
+        if (potenziometro1 < 400 || potenziometro1 > 600) {
+          stepper1.setSpeed((potenziometro1 - ZeroP1) / 2);
+        }
+        if (potenziometro2 < 400 || potenziometro2 > 600) {
+          stepper2.setSpeed((potenziometro2 - ZeroP2) / 6);
+        }
+      }
+      break;
+    default:
+#ifdef DEBUG
+      Serial.println("Unknown state");
+#endif
+      break;
+  }
 }
 
 void setup() {
-  // Initialize Serial Monitor
   Serial.begin(9600);
 
-  // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
 
-  pinMode(stp, OUTPUT);
-  pinMode(dir, OUTPUT);
+  pinMode(stp1, OUTPUT);
+  pinMode(dir1, OUTPUT);
+  pinMode(stp2, OUTPUT);
+  pinMode(dir2, OUTPUT);
   pinMode(MS1, OUTPUT);
   pinMode(MS2, OUTPUT);
   pinMode(MS3, OUTPUT);
   pinMode(EN, OUTPUT);
-
-  // resetBEDPins();
+  pinMode(LASER_PIN, OUTPUT);
 
   stepper1.setMaxSpeed(10000);
   stepper1.setSpeed(0);
+  stepper2.setMaxSpeed(10000);
+  stepper2.setSpeed(0);
+
+  digitalWrite(LASER_PIN, ledState);
 
 
-  // WiFi.mode(WIFI_MODE_STA);
-  // Serial.println(WiFi.macAddress());
-  // mac of esp32D   : 7C:9E:BD:F3:B7:E8
-  // mac of esp32D(A): C8:2B:96:B9:56:AC
-
-  // Init ESP-NOW
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
 
-  // Once ESPNow is successfully Init, we will register for recv CB to
-  // get recv packer info
   esp_now_register_recv_cb(OnDataRecv);
 }
 
 void loop() {
   stepper1.runSpeed();
-}
-
-//Reset Big Easy Driver pins to default states
-void resetBEDPins() {
-  digitalWrite(stp, LOW);
-  digitalWrite(dir, LOW);
-  digitalWrite(MS1, LOW);
-  digitalWrite(MS2, LOW);
-  digitalWrite(MS3, LOW);
-  digitalWrite(EN, HIGH);
+  stepper2.runSpeed();
 }
