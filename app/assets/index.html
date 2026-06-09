@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <script src="libs/socket.io.min.js"></script>
+        <script src="libs/nipplejs.min.js"></script>
+        <title>Telescope Equatorial Control</title>
+    </head>
+    <body>
+        <button>Enable Micro Step</button>
+        <button>Start Automatic Tracking</button>
+        <button>Enable Laser Pointer</button>
+
+        <div id="joystick-zone"></div>
+
+        <script>
+            const joystick = nipplejs.create({
+                zone: document.getElementById("joystick-zone"),
+                mode: "static",
+                position: { left: "50%", top: "50%" },
+                color: "blue",
+            });
+
+            joystick.on("move", function (evt, data) {
+                console.log(
+                    "angle:",
+                    data.angle.degree,
+                    "direction",
+                    data.direction,
+                    "distance:",
+                    data.distance,
+                    "vector",
+                    data.vector,
+                );
+            });
+
+            // joystick.on("pressure", function (evt, data) {
+            //     console.log("pressed:", data);
+            // });
+        </script>
+    </body>
+</html>
